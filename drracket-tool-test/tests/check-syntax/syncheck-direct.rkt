@@ -402,9 +402,14 @@
     (send annotations get-unused))
 
   (check-equal?
-   (run-a-test (format "(module m racket/base (define (f x) x))"))
+   (run-a-test "(module m racket/base (define (f x) x))")
    (set '(f 31 32)))
   
+  (check-equal?
+   (run-a-test "(module m racket/base (define (f x) 0))")
+   (set '(f 31 32)
+        '(x 33 34)))
+
   (check-equal?
    (run-a-test (format "(module m racket/base (define (f x) 0))"))
    (set '(f 31 32)
