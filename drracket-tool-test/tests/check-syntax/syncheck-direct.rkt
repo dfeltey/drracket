@@ -266,7 +266,41 @@
            (subtract-prefix (list-ref arrow 1))))
    (set '((15 19 0.5 0.5) (24 28 0.5 0.5)))))
 
-;; Unused requires
+
+;                                                 
+;                                                 
+;                                                 
+;                                                 
+;                                             ;;; 
+;                                             ;;; 
+;  ;;; ;;; ;;; ;;  ;;; ;;;  ;;;;    ;;;;   ;; ;;; 
+;  ;;; ;;; ;;;;;;; ;;; ;;; ;;; ;;  ;; ;;; ;;;;;;; 
+;  ;;; ;;; ;;; ;;; ;;; ;;; ;;;    ;;; ;;; ;;; ;;; 
+;  ;;; ;;; ;;; ;;; ;;; ;;;  ;;;;  ;;;;;;; ;;; ;;; 
+;  ;;; ;;; ;;; ;;; ;;; ;;;    ;;; ;;;     ;;; ;;; 
+;  ;;;;;;; ;;; ;;; ;;;;;;; ;; ;;;  ;;;;;; ;;;;;;; 
+;   ;; ;;; ;;; ;;;  ;; ;;;  ;;;;    ;;;;   ;; ;;; 
+;                                                 
+;                                                 
+;                                                       
+;                                                       
+;                                                       
+;                                                       
+;                               ;;;                     
+;                                                       
+;  ;;; ;; ;;;;   ;; ;;; ;;; ;;; ;;; ;;; ;; ;;;;   ;;;;  
+;  ;;;;; ;; ;;; ;;;;;;; ;;; ;;; ;;; ;;;;; ;; ;;; ;;; ;; 
+;  ;;;  ;;; ;;; ;;; ;;; ;;; ;;; ;;; ;;;  ;;; ;;; ;;;    
+;  ;;;  ;;;;;;; ;;; ;;; ;;; ;;; ;;; ;;;  ;;;;;;;  ;;;;  
+;  ;;;  ;;;     ;;; ;;; ;;; ;;; ;;; ;;;  ;;;        ;;; 
+;  ;;;   ;;;;;; ;;;;;;; ;;;;;;; ;;; ;;;   ;;;;;; ;; ;;; 
+;  ;;;    ;;;;   ;; ;;;  ;; ;;; ;;; ;;;    ;;;;   ;;;;  
+;                   ;;;                                 
+;                   ;;;                                 
+;                                                       
+;                                                       
+
+
 (let ()
   (define-values (add-syntax done)
     (make-traversal (make-base-namespace) #f))
@@ -303,3 +337,75 @@
   (check-equal?
    (send annotations get-unused-requires)
    (set '(31 43))))
+
+
+
+;                                                                                         
+;                                                                                         
+;                                                                                         
+;                                                                                         
+;                                ;;;;                                                 ;;; 
+;                               ;;;                                                   ;;; 
+;  ;;; ;;; ;;; ;;  ;;; ;; ;;;;  ;;;;   ;;;;  ;;; ;; ;;;;  ;;; ;;    ;;;     ;;;;   ;; ;;; 
+;  ;;; ;;; ;;;;;;; ;;;;; ;; ;;; ;;;;  ;; ;;; ;;;;; ;; ;;; ;;;;;;;  ;;;;;   ;; ;;; ;;;;;;; 
+;  ;;; ;;; ;;; ;;; ;;;  ;;; ;;; ;;;  ;;; ;;; ;;;  ;;; ;;; ;;; ;;; ;;;  ;; ;;; ;;; ;;; ;;; 
+;  ;;; ;;; ;;; ;;; ;;;  ;;;;;;; ;;;  ;;;;;;; ;;;  ;;;;;;; ;;; ;;; ;;;     ;;;;;;; ;;; ;;; 
+;  ;;; ;;; ;;; ;;; ;;;  ;;;     ;;;  ;;;     ;;;  ;;;     ;;; ;;; ;;;  ;; ;;;     ;;; ;;; 
+;  ;;;;;;; ;;; ;;; ;;;   ;;;;;; ;;;   ;;;;;; ;;;   ;;;;;; ;;; ;;;  ;;;;;   ;;;;;; ;;;;;;; 
+;   ;; ;;; ;;; ;;; ;;;    ;;;;  ;;;    ;;;;  ;;;    ;;;;  ;;; ;;;   ;;;     ;;;;   ;; ;;; 
+;                                                                                         
+;                                                                                         
+;                                                             
+;                                                             
+;                                                             
+;                                                             
+;                      ;;;         ;;;     ;;;                
+;                                  ;;;     ;;;                
+;  ;;; ;;; ;;;;;  ;;; ;;;;  ;;;;;  ;;; ;;  ;;;   ;;;;   ;;;;  
+;   ;; ;; ;;;;;;; ;;;;;;;; ;;;;;;; ;;;;;;; ;;;  ;; ;;; ;;; ;; 
+;   ;; ;; ;;  ;;; ;;;  ;;; ;;  ;;; ;;; ;;; ;;; ;;; ;;; ;;;    
+;   ;; ;;   ;;;;; ;;;  ;;;   ;;;;; ;;; ;;; ;;; ;;;;;;;  ;;;;  
+;    ;;;  ;;; ;;; ;;;  ;;; ;;; ;;; ;;; ;;; ;;; ;;;        ;;; 
+;    ;;;  ;;; ;;; ;;;  ;;; ;;; ;;; ;;;;;;; ;;;  ;;;;;; ;; ;;; 
+;    ;;;   ;;;;;; ;;;  ;;;  ;;;;;; ;;; ;;  ;;;   ;;;;   ;;;;  
+;                                                             
+;                                                             
+;                                                             
+;                                                             
+
+(let ()
+  (define-values (add-syntax done)
+    (make-traversal (make-base-namespace) #f))
+
+  (define collector%
+    (class (annotations-mixin object%)
+      (super-new)
+      (define unused (set))
+
+      (define/override (syncheck:find-source-object stx) stx)
+      (define/override (syncheck:add-background-color stx start end color)
+        (when (equal? color "firebrick")
+          (set! unused (set-add unused (list (syntax-e stx) start end)))))
+      (define/public (get-unused) unused)))
+
+  ;; run-a-test : string -> (setof (list/c symbol[id-name] number[start] number[end]))
+  (define (run-a-test str)
+    (define annotations (new collector%))
+    (parameterize ([current-annotations annotations]
+                   [current-namespace (make-base-namespace)])
+      (add-syntax
+       (expand
+        (read-syntax
+         'the-source
+         (open-input-string str)))))
+    (done)
+    (send annotations get-unused))
+
+  (check-equal?
+   (run-a-test (format "(module m racket/base (define (f x) x))"))
+   (set '(f 31 32)))
+  
+  (check-equal?
+   (run-a-test (format "(module m racket/base (define (f x) 0))"))
+   (set '(f 31 32)
+        '(x 33 34))))
