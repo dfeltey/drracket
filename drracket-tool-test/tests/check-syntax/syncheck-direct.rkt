@@ -411,6 +411,6 @@
         '(x 33 34)))
 
   (check-equal?
-   (run-a-test (format "(module m racket/base (define (f x) 0))"))
-   (set '(f 31 32)
-        '(x 33 34))))
+   (run-a-test
+    "(module m racket/base (require racket/class) (class object% (define/public (m x) x)))")
+   (set)))
