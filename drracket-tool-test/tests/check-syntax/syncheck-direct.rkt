@@ -393,11 +393,9 @@
     (define annotations (new collector%))
     (parameterize ([current-annotations annotations]
                    [current-namespace (make-base-namespace)])
-      (add-syntax
-       (expand
-        (read-syntax
-         'the-source
-         (open-input-string str)))))
+      (define prt (open-input-string str))
+      (port-count-lines! prt)
+      (add-syntax (expand (read-syntax 'the-source prt))))
     (done)
     (send annotations get-unused))
 
