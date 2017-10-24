@@ -411,4 +411,9 @@
   (check-equal?
    (run-a-test
     "(module m racket/base (require racket/class) (class object% (define/public (m x) x)))")
-   (set)))
+   (set))
+
+  (check-equal?
+   (run-a-test
+    "(module m racket (define-syntax (m stx) #`(provide #,'x)) (m) (define x 10))")
+   (set '(stx 35 38))))
