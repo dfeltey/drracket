@@ -15,6 +15,7 @@
     syncheck:add-arrow/name-dup/pxpy
     syncheck:add-tail-arrow
     syncheck:add-mouse-over-status
+    syncheck:add-keybinding-action
     syncheck:add-jump-to-definition
     syncheck:add-definition-target
     syncheck:add-prefixed-require-reference
@@ -65,6 +66,7 @@
                                    actual? level require-arrow? name-dup?))
     (define/public (syncheck:add-tail-arrow from-text from-pos to-text to-pos) (void))
     (define/public (syncheck:add-mouse-over-status text pos-left pos-right str) (void))
+    (define/public (syncheck:add-keybinding-action text key name start end commands) (void))
     
     (define/public (syncheck:add-jump-to-definition text start end id filename submods) (void))
     (define/public (syncheck:add-definition-target source pos-left pos-right id mods) (void))

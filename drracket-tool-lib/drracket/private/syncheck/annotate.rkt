@@ -6,7 +6,8 @@
          find-source-editor
          find-source-editor/defs
          add-mouse-over
-         add-mouse-over/loc)
+         add-mouse-over/loc
+         add-keybinding-action)
 
 ;; color : syntax[original] str -> void
 ;; colors the syntax with style-name's style
@@ -52,6 +53,11 @@
   (when (string? str)
     (send defs-text syncheck:add-mouse-over-status
           source pos-left pos-right str)))
+
+(define (add-keybinding-action source key name start end commands)
+  (define defs-text (current-annotations))
+  (when defs-text
+    (send defs-text syncheck:add-keybinding-action source key name start end commands)))
 
 ;; find-source-editor : stx -> editor or false
 (define (find-source-editor stx)

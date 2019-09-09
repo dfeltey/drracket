@@ -237,6 +237,8 @@
                     (add-disappeared-uses stx varrefs sub-identifier-binding-directives
                                           level level-of-enclosing-module mods)
                     (add-mouse-over-tooltips stx)
+                    ;; FIXME: probably need to do more processing of these eventually
+                    (add-keybinding-actions stx)
                     (add-sub-range-binders stx 
                                            sub-identifier-binding-directives
                                            level
@@ -630,6 +632,28 @@
                            (vector-ref prop 1)
                            (vector-ref prop 2)
                            (vector-ref prop 3))])))
+
+(define keybinding-action-prop?
+  (vector/c #:flat? #t syntax? string? string? number? number?
+            (listof (cons/c symbol? (listof (or/c number? string?))))))
+
+;; TODO: later probably want to do some preprocessing
+;;       on the set of keybindings to handle nesting correctly
+(define (add-keybinding-actions stx)
+  (let loop ([prop (syntax-property stx 'keybinding-action)])
+    (cond
+      [(pair? prop)
+       (loop (car prop))
+       (loop (cdr prop))]
+      [(keybinding-action-prop? prop)
+       (printf "found-keybinding-action in traversal!!\n")
+       (add-keybinding-action (find-source-editor (vector-ref prop 0))
+                              (vector-ref prop 1)
+                              (vector-ref prop 2)
+                              (vector-ref prop 3)
+                              (vector-ref prop 4)
+                              (vector-ref prop 5))])))
+
 
     ;; add-disappeared-bindings : syntax id-set integer -> void
     (define (add-disappeared-bindings stx binders sub-identifier-binding-directives disappeared-uses
@@ -1507,6 +1531,7 @@
          _end-text end-pos-left end-pos-right end-px end-py
          actual? level require-arrow? name-dup?)
     (log syncheck:add-mouse-over-status _text pos-left pos-right str)
+    (log syncheck:add-keybinding-action _text key name start end commands)
     (log syncheck:add-text-type _text start fin text-type)
     (log syncheck:add-background-color _text start fin color)
     (log syncheck:add-jump-to-definition _text start end id filename submods)

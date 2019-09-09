@@ -466,6 +466,27 @@ If the namespace does not, they are colored the unbound color.
             ;; unused-require-table : hash-table[(list text number number) -o> #t]
             ;; this table records if a given require appears to be unused
             (define unused-require-table (make-hash))
+
+            ;; local-keymap : a keymap% for storing added keybinding actions
+            (define local-keymap #f)
+
+            ;; interval map mapping between key uses and their actions
+            (define key-action-map (make-interval-map))
+
+            (define (invalidate-actions!)
+              (set! key-action-map (make-interval-map)))
+
+            (define (initialize-local-keymap)
+              (define new-local-km (new keymap:aug-keymap%))
+              (define this-keymap (send this get-keymap))
+              ;; remove the keymap if there was already one
+              (when local-keymap
+                (send this-keymap remove-chained-keymap local-keymap))
+              ;; pass #t as prefix? argument to give this one precedence?
+              (send this-keymap chain-to-keymap new-local-km #t)
+              (set! local-keymap new-local-km)
+              (set! key-action-map (make-interval-map)))
+                
             
             ;; add-to-bindings-table : text number number text number number -> boolean
             ;; results indicates if the binding was added to the table. It is added, unless
@@ -635,7 +656,9 @@ If the namespace does not, they are colored the unbound color.
               (set! bindings-table (make-hash))
               (set! cleanup-texts '())
               (set! definition-targets (make-hash))
-              (set! unused-require-table (make-hash)))
+              (set! unused-require-table (make-hash))
+              ;; TODO: is this the right place for this?
+              (initialize-local-keymap))
             
             (define/public (syncheck:arrows-visible?)
               (or arrow-records cursor-pos cursor-text cursor-eles cursor-tooltip))
@@ -1069,6 +1092,76 @@ If the namespace does not, they are colored the unbound color.
                 (add-to-range/key text pos-left pos-right 
                                   (make-tooltip-info text pos-left pos-right str)
                                   #f #f)))
+
+            (define/private (interpret-edit-actions commands)
+              (for ([command (in-list commands)])
+                (interpret-command command)))
+                        
+            (define/private (interpret-command command)
+              (match command
+                [`(insert ,string ,pos)
+                 (send this insert string pos)]
+                [`(delete ,start ,span)
+                 (send this delete start (+ start span))]
+                [`(copy ,start ,end ,dest)
+                 (send this move/copy-to-edit this  start end dest #:try-to-move? #f)]
+                [`(swap ,start-1 ,span-1 ,start-2 ,span-2)
+                 (define t-1 (copy-to-temp-text start-1 (+ start-1 span-1)))
+                 (define t-2 (copy-to-temp-text start-2 (+ start-2 span-2)))
+                 (send this delete start-2 (+ start-2 span-2))
+                 (send t-1 move/copy-to-edit
+                       this
+                       0
+                       span-1
+                       start-2
+                       #:try-to-move? #f)
+                 (send this delete start-1 (+ start-1 span-1))
+                 (send t-2 move/copy-to-edit
+                       this
+                       0
+                       span-2
+                       start-1
+                       #:try-to-move? #f)]
+                [`(tabify ,start ,end)
+                 (send this tabify-selection start end)]))
+
+            (define/private (copy-to-temp-text start end)
+              (define temp (new (text:basic-mixin (editor:basic-mixin text%))))
+              (send this move/copy-to-edit temp start end 0 #:try-to-move? #f)
+              temp)
+
+            ;; TODO: make this work correctly
+            (define/public (syncheck:add-keybinding-action text key name start end commands)
+              ; get keymap from the editor
+              ; use 
+              (printf "FOUND A KEYBINDING IN GUI!!!\n")
+              ;; TODO: want names to be unique to each macro
+              (interval-map-set! key-action-map start end commands)
+              (define already-added? (send local-keymap is-function-added? name))
+              ;; FIXME: can't just map from position to the interval map ...
+              ;; need a mapping from interval map to commands, but need to filter
+              ;; it through a hash that maps keybinding/name to the right interval map ...
+              (unless already-added?
+                (send local-keymap add-function
+                      name
+                      (λ (obj evt)
+                        (printf "(object=? this obj) => ~a\n" (object=? this obj))
+                        (define pos-box (box #f))
+                        (send this get-position pos-box)
+                        (define pos (unbox pos-box))
+                        ;; FIXME: this isnt' exactly the right indirection for things but
+                        ;; should work for a simple demo
+                        (define actions (interval-map-ref key-action-map pos #f))
+                        (when actions
+                          (begin-edit-sequence)
+                          (interpret-edit-actions actions)
+                          ;; is this the right place for this???
+                          (invalidate-actions!)
+                          (end-edit-sequence))))
+                (send local-keymap map-function key name))
+              ;(keymap:send-map-function-meta keymap "=" "insert-hello")
+              (printf "added key stuff ....\n")
+              (void))
             
             ;; add-to-range/key : text number number any any boolean -> void
             ;; adds `key' to the range `start' - `end' in the editor
@@ -2169,6 +2262,9 @@ If the namespace does not, they are colored the unbound color.
              (send defs-text syncheck:add-tail-arrow defs-text from-pos defs-text to-pos)]
             [`#(syncheck:add-mouse-over-status ,pos-left ,pos-right ,str)
              (send defs-text syncheck:add-mouse-over-status defs-text pos-left pos-right str)]
+            [`#(syncheck:add-keybinding-action ,key ,name ,start ,end ,commands)
+             (printf "FOUND ONE\n")
+             (send defs-text syncheck:add-keybinding-action defs-text key name start end commands)]
             [`#(syncheck:add-text-type ,start ,fin ,text-type)
              (send defs-text syncheck:add-text-type defs-text start fin text-type)]
             [`#(syncheck:add-background-color ,start ,fin ,color) ; unused
